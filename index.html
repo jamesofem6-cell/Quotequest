@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10152b">
+<title>QuoteQuest</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10152b;color:#fff;font-family:Arial,sans-serif;text-align:center;padding:20px}
+.container{max-width:500px;margin:auto}
+h1{color:#ffd166;font-size:34px;margin-bottom:5px}
+.subtitle{color:#bdc5df;margin-bottom:25px}
+.stats{display:flex;justify-content:space-between;gap:10px;margin:20px 0}
+.stat{background:#202947;padding:13px;border-radius:12px;flex:1}
+.stat strong{display:block;color:#ffd166;font-size:22px;margin-top:5px}
+.card{background:#202947;border-radius:18px;padding:25px 18px;margin:20px 0}
+.category{color:#ffd166;font-size:13px;text-transform:uppercase;letter-spacing:2px}
+.quote{font-size:22px;line-height:1.5;margin:22px 0}
+.answers{display:grid;gap:12px}
+button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer}
+.answer{background:#344165;color:white;text-align:left}
+.answer:active{transform:scale(.98)}
+.answer:disabled{opacity:.8}
+.primary{background:#ffd166;color:#171b30;width:100%;margin-top:15px}
+.secondary{background:#344165;color:#fff;width:100%;margin-top:10px}
+#message{min-height:25px;margin:15px 0;font-weight:bold}
+.small{font-size:12px;color:#aeb8d5;line-height:1.5;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>QuoteQuest</h1>
+<div class="subtitle">Think. Guess. Earn coins.</div>
+
+<div class="stats">
+ <div class="stat">Coins<strong id="coins">0</strong></div>
+ <div class="stat">Score<strong id="score">0</strong></div>
+ <div class="stat">Streak<strong id="streak">0</strong></div>
+</div>
+
+<div class="card">
+ <div class="category" id="category">Wisdom</div>
+ <div class="quote" id="quote">Loading quote...</div>
+ <div class="answers" id="answers"></div>
+ <div id="message"></div>
+</div>
+
+<button class="secondary" onclick="useHint()">Use hint (10 coins)</button>
+<button class="primary" onclick="nextQuestion()">Next challenge</button>
+
+<div class="small">
+Answer correctly to earn 5 coins.<br>
+Your progress is saved on this device.
+</div>
+</div>
+
+<script>
+const questions=[
+{q:"The only thing we have to fear is fear itself.",a:["Abraham Lincoln","Franklin D. Roosevelt","Winston Churchill","Nelson Mandela"],c:1,h:"A former American president who led during World War II.",cat:"Courage"},
+{q:"I think, therefore I am.",a:["Plato","Aristotle","René Descartes","Socrates"],c:2,h:"A French philosopher.",cat:"Philosophy"},
+{q:"Education is the most powerful weapon which you can use to change the world.",a:["Nelson Mandela","Malcolm X","Martin Luther King Jr.","Barack Obama"],c:0,h:"South Africa's former president.",cat:"Education"},
+{q:"Stay hungry, stay foolish.",a:["Bill Gates","Steve Jobs","Mark Zuckerberg","Elon Musk"],c:1,h:"Co-founder of Apple.",cat:"Success"},
+{q:"Be the change that you wish to see in the world.",a:["Mahatma Gandhi","Mother Teresa","Dalai Lama","Confucius"],c:0,h:"An Indian independence leader.",cat:"Change"},
+{q:"It always seems impossible until it's done.",a:["Winston Churchill","Nelson Mandela","Theodore Roosevelt","Mahatma Gandhi"],c:1,h:"He spent 27 years in prison before becoming president.",cat:"Persistence"},
+{q:"Knowledge is power.",a:["Isaac Newton","Francis Bacon","Albert Einstein","Plato"],c:1,h:"An English philosopher.",cat:"Knowledge"},
+{q:"In the middle of difficulty lies opportunity.",a:["Albert Einstein","Thomas Edison","Henry Ford","Charles Darwin"],c:0,h:"A famous physicist.",cat:"Opportunity"},
+{q:"If you can dream it, you can do it.",a:["Walt Disney","Steve Jobs","Oprah Winfrey","Walt Whitman"],c:0,h:"The creator of Mickey Mouse's entertainment empire.",cat:"Dreams"},
+{q:"Our lives begin to end the day we become silent about things that matter.",a:["Rosa Parks","Martin Luther King Jr.","Frederick Douglass","Malcolm X"],c:1,h:"A leader of the American civil rights movement.",cat:"Justice"},
+{q:"Well done is better than well said.",a:["Benjamin Franklin","George Washington","Thomas Jefferson","John Adams"],c:0,h:"A founding father of the United States.",cat:"Action"},
+{q:"The secret of getting ahead is getting started.",a:["Mark Twain","Agatha Christie","Charles Dickens","Jane Austen"],c:0,h:"American writer known for Tom Sawyer.",cat:"Motivation"},
+{q:"It is during our darkest moments that we must focus to see the light.",a:["Aristotle","Helen Keller","Socrates","Plato"],c:1,h:"An American author who was deaf and blind.",cat:"Hope"},
+{q:"Success is not final, failure is not fatal: it is the courage to continue that counts.",a:["Winston Churchill","Abraham Lincoln","Theodore Roosevelt","John F. Kennedy"],c:0,h:"British prime minister during World War II.",cat:"Success"}
+];
+
+let coins=Number(localStorage.getItem("qq_coins")||0);
+let score=0,streak=0,index=-1,answered=false,order=[];
+
+function save(){
+ localStorage.setItem("qq_coins",coins);
+ document.getElementById("coins").textContent=coins;
+ document.getElementById("score").textContent=score;
+ document.getElementById("streak").textContent=streak;
+}
+
+function nextQuestion(){
+ if(order.length===0){
+  order=questions.map((_,i)=>i);
+  for(let i=order.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [order[i],order[j]]=[order[j],order[i]];
+  }
+ }
+ index=order.pop();
+ answered=false;
+ const item=questions[index];
+ document.getElementById("category").textContent=item.cat;
+ document.getElementById("quote").textContent='"'+item.q+'"';
+ document.getElementById("message").textContent="";
+ const answers=document.getElementById("answers");
+ answers.innerHTML="";
+ item.a.forEach((name,i)=>{
+  const button=document.createElement("button");
+  button.className="answer";
+  button.textContent=String.fromCharCode(65+i)+". "+name;
+  button.onclick=()=>chooseAnswer(i,button);
+  answers.appendChild(button);
+ });
+}
+
+function chooseAnswer(choice,button){
+ if(answered)return;
+ answered=true;
+ const item=questions[index];
+ document.querySelectorAll(".answer").forEach(b=>b.disabled=true);
+ if(choice===item.c){
+  coins+=5;score+=1;streak+=1;
+  button.style.background="#176b4b";
+  document.getElementById("message").textContent="Correct! +5 coins";
+ }else{
+  streak=0;
+  button.style.background="#8b303d";
+  document.getElementById("message").textContent="Not quite! Answer: "+item.a[item.c];
+ }
+ save();
+}
+
+function useHint(){
+ if(answered)return;
+ if(coins<10){
+  document.getElementById("message").textContent="You need 10 coins for a hint.";
+  return;
+ }
+ coins-=10;
+ document.getElementById("message").textContent="Hint: "+questions[index].h;
+ save();
+}
+
+save();
+nextQuestion();
+</script>
+</body>
+</html>
