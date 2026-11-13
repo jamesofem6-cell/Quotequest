@@ -37,8 +37,16 @@ jobs:
 
       - name: Configure QuoteQuest AdMob app ID
         run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          sed -i 's#<application#<application\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3760840152356990~7379739987" />#' "$MANIFEST"
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          content = manifest.read_text()
+          app_id = 'ca-app-pub-3760840152356990~7379739987'
+          metadata = f'    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="{app_id}" />'
+          if "com.google.android.gms.ads.APPLICATION_ID" not in content:
+              content = content.replace("</application>", metadata + "\\n    </application>")
+          manifest.write_text(content)
+          PY
 
       - name: Sync Android
         run: npx cap sync android
