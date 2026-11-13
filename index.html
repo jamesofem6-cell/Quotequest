@@ -185,6 +185,10 @@ async function watchAdForCoins(){
    return;
   }
 
+  // Do not request or show an ad until the native Google Mobile Ads SDK is initialized.
+  if(!window.qqAdMobModules.ready) throw new Error("AdMob initialization is unavailable.");
+  await window.qqAdMobModules.ready;
+
   // This is the live rewarded-ad unit supplied for QuoteQuest.
   const rewardedAdUnitId="ca-app-pub-3760840152356990/7180750236";
   ad=new RewardedAd({adUnitId:rewardedAdUnitId});
