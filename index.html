@@ -58,6 +58,7 @@ Your progress is saved on this device.
 </div>
 </div>
 
+<script type="module" src="/admob-loader.js"></script>
 <script>
 const questions=[
 {q:"The only thing we have to fear is fear itself.",a:["Abraham Lincoln","Franklin D. Roosevelt","Winston Churchill","Nelson Mandela"],c:1,h:"A former American president who led during World War II.",cat:"Courage"},
@@ -172,10 +173,8 @@ async function watchAdForCoins(){
  let rewardGranted=false;
  message.textContent="Loading rewarded advertisement...";
  try{
-  const [{RewardedAd,AdMob,AdMobPlusEvents},{Capacitor}]=await Promise.all([
-   import("@capgo/capacitor-admob"),
-   import("@capacitor/core")
-  ]);
+  const {RewardedAd,AdMob,AdMobPlusEvents,Capacitor}=window.qqAdMobModules||{};
+  if(!RewardedAd||!AdMob||!AdMobPlusEvents||!Capacitor) throw new Error("AdMob module is not ready.");
   if(!Capacitor.isNativePlatform()){
    message.textContent="Rewarded ads are available in the installed Android app.";
    return;
