@@ -190,14 +190,16 @@ async function watchAdForCoins(){
   // Production ad unit: ca-app-pub-3760840152356990/7180750236
   ad=new RewardedAd({adUnitId:rewardedAdUnitId});
 
-  // Start the native Google Mobile Ads SDK before requesting a rewarded ad.
+  // Start the native Google Mobile Ads SDK before registering listeners.
+  // Registering after startup ensures the native event bridge is ready.
   await AdMob.start();
 
-  // This listener is scoped to the one ad currently being shown. The plugin's
-  // event adId is a native numeric ID; some wrapper builds do not expose the
-  // same value as ad.id, so do not discard a valid reward due to that mismatch.
+  // Listen for the official rewarded callback before loading/showing the ad.
+  // Capgo 8.x sends { adId, reward: { amount, type } }; amount fallback
+  // also supports older bridge payloads without risking duplicate rewards.
   rewardListener=await AdMob.addListener(AdMobPlusEvents.RewardedReward,event=>{
-   const amount=Number(event?.reward?.amount);
+   console.log("QuoteQuest AdMob reward callback:", event);
+   const amount=Number(event?.reward?.amount ?? event?.amount ?? 0);
    if(!rewardGranted && amount>0){
     rewardGranted=true;
     coins+=20;
