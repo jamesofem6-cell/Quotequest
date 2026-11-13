@@ -48,7 +48,7 @@ button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:bold;
 </div>
 
 <button class="secondary" onclick="useHint()">Use hint (10 coins)</button>
-<button class="primary" onclick="nextQuestion()">Next challenge</button>
+<button class="primary" id="nextButton" onclick="nextQuestion()" disabled>Next challenge (answer correctly first)</button>
 
 <div class="small">
 Answer correctly to earn 5 coins.<br>
@@ -99,6 +99,15 @@ function save(){
 }
 
 function nextQuestion(){
+ // Never allow players to skip an unanswered or incorrectly answered challenge.
+ if(index!==-1 && !answered){
+  document.getElementById("message").textContent="Choose an answer first. You must answer correctly to continue.";
+  return;
+ }
+ if(index!==-1 && questions[index] && window.qq_lastAnswerCorrect!==true){
+  document.getElementById("message").textContent="Get the correct answer before moving to the next challenge.";
+  return;
+ }
  if(order.length===0){
   order=questions.map((_,i)=>i);
   for(let i=order.length-1;i>0;i--){
@@ -108,10 +117,13 @@ function nextQuestion(){
  }
  index=order.pop();
  answered=false;
+ window.qq_lastAnswerCorrect=false;
  const item=questions[index];
  document.getElementById("category").textContent=item.cat;
  document.getElementById("quote").textContent='"'+item.q+'"';
  document.getElementById("message").textContent="";
+ const nextButton=document.getElementById("nextButton");
+ if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
  const answers=document.getElementById("answers");
  answers.innerHTML="";
  item.a.forEach((name,i)=>{
@@ -129,13 +141,20 @@ function chooseAnswer(choice,button){
  const item=questions[index];
  document.querySelectorAll(".answer").forEach(b=>b.disabled=true);
  if(choice===item.c){
+  window.qq_lastAnswerCorrect=true;
   coins+=5;score+=1;streak+=1;
   button.style.background="#176b4b";
-  document.getElementById("message").textContent="Correct! +5 coins";
+  document.getElementById("message").textContent="Correct! +5 coins. You can continue.";
+  const nextButton=document.getElementById("nextButton");
+  if(nextButton){nextButton.disabled=false;nextButton.textContent="Next challenge";}
  }else{
+  window.qq_lastAnswerCorrect=false;
   streak=0;
   button.style.background="#8b303d";
-  document.getElementById("message").textContent="Not quite! Answer: "+item.a[item.c];
+  document.getElementById("message").textContent="Not quite! Answer: "+item.a[item.c]+". Try again to unlock the next challenge.";
+  answered=false;
+  const nextButton=document.getElementById("nextButton");
+  if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
  }
  save();
 }
