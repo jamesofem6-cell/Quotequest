@@ -74,11 +74,25 @@ const questions=[
 {q:"Success is not final, failure is not fatal: it is the courage to continue that counts.",a:["Winston Churchill","Abraham Lincoln","Theodore Roosevelt","John F. Kennedy"],c:0,h:"British prime minister during World War II.",cat:"Success"}
 ];
 
-let coins=Number(localStorage.getItem("qq_coins")||0);
+// Safe storage: the game must still start if Android WebView storage is unavailable.
+function readCoins(){
+ try{
+  const value=Number(window.localStorage.getItem("qq_coins")||0);
+  return Number.isFinite(value)&&value>=0?value:0;
+ }catch(error){
+  console.warn("QuoteQuest storage read unavailable:",error);
+  return 0;
+ }
+}
+function writeCoins(value){
+ try{window.localStorage.setItem("qq_coins",String(value));}
+ catch(error){console.warn("QuoteQuest storage write unavailable:",error);}
+}
+let coins=readCoins();
 let score=0,streak=0,index=-1,answered=false,order=[];
 
 function save(){
- localStorage.setItem("qq_coins",coins);
+ writeCoins(coins);
  document.getElementById("coins").textContent=coins;
  document.getElementById("score").textContent=score;
  document.getElementById("streak").textContent=streak;
@@ -137,8 +151,25 @@ function useHint(){
  save();
 }
 
-save();
-nextQuestion();
+// Keep startup errors visible instead of leaving the user with a silent blank screen.
+window.addEventListener("error",function(event){
+ const message=document.getElementById("message");
+ if(message) message.textContent="Game error: "+(event.message||"Unknown JavaScript error");
+});
+window.addEventListener("unhandledrejection",function(event){
+ const message=document.getElementById("message");
+ if(message) message.textContent="Game error: "+String(event.reason||"Unexpected startup error");
+});
+try{
+ save();
+ nextQuestion();
+}catch(error){
+ console.error("QuoteQuest startup failed:",error);
+ const quote=document.getElementById("quote");
+ const message=document.getElementById("message");
+ if(quote) quote.textContent="QuoteQuest could not start.";
+ if(message) message.textContent="Startup error: "+(error&&error.message?error.message:String(error));
+}
 </script>
 </body>
 </html>
