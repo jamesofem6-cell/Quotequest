@@ -172,10 +172,11 @@ async function watchAdForCoins(){
  if(adBusy)return;
  adBusy=true;
  const message=document.getElementById("message");
- let rewardListener=null;
+ const listeners=[];
  let ad=null;
  let rewardGranted=false;
- message.textContent="Loading rewarded advertisement...";
+ let finishAd;
+ const adFinished=new Promise(resolve=>{finishAd=resolve;});
  try{
   const {RewardedAd,AdMob,AdMobPlusEvents,Capacitor}=window.qqAdMobModules||{};
   if(!RewardedAd||!AdMob||!AdMobPlusEvents||!Capacitor) throw new Error("AdMob module is not ready.");
@@ -184,43 +185,56 @@ async function watchAdForCoins(){
    return;
   }
 
-  // Use Google's official test ad unit while validating the APK.
-  // Replace with the production unit below only after successful testing.
-  const rewardedAdUnitId="ca-app-pub-3940256099942544/5224354917";
-  // Production ad unit: ca-app-pub-3760840152356990/7180750236
+  // This is the live rewarded-ad unit supplied for QuoteQuest.
+  const rewardedAdUnitId="ca-app-pub-3760840152356990/7180750236";
   ad=new RewardedAd({adUnitId:rewardedAdUnitId});
 
-  // Start the native Google Mobile Ads SDK before registering listeners.
-  // Registering after startup ensures the native event bridge is ready.
-  await AdMob.start();
-
-  // Listen for the official rewarded callback before loading/showing the ad.
-  // Capgo 8.x sends { adId, reward: { amount, type } }; amount fallback
-  // also supports older bridge payloads without risking duplicate rewards.
-  rewardListener=await AdMob.addListener(AdMobPlusEvents.RewardedReward,event=>{
-   console.log("QuoteQuest AdMob reward callback:", event);
-   const amount=Number(event?.reward?.amount ?? event?.amount ?? 0);
-   if(!rewardGranted && amount>0){
+  // Keep the reward listener alive until the native SDK reports the reward.
+  // IMPORTANT: ad.show() resolves when the ad opens, not when it finishes.
+  listeners.push(await AdMob.addListener(AdMobPlusEvents.RewardedReward,event=>{
+   console.log("QuoteQuest rewarded event:",event);
+   if(!rewardGranted && event?.reward){
     rewardGranted=true;
     coins+=20;
     save();
     message.textContent="Reward earned! +20 coins added. Your balance is saved.";
+    finishAd("reward");
    }
-  });
+  }));
 
+  listeners.push(await AdMob.addListener(AdMobPlusEvents.RewardedDismiss,()=>{
+   finishAd("dismissed");
+  }));
+
+  listeners.push(await AdMob.addListener(AdMobPlusEvents.RewardedShowFail,event=>{
+   console.error("QuoteQuest rewarded ad show failed:",event);
+   finishAd("failed");
+  }));
+
+  message.textContent="Preparing your reward...";
   await ad.load();
-  message.textContent="Ad ready. Please watch to earn 20 coins.";
+  message.textContent="Ad ready. Watch the advert to earn 20 coins.";
   await ad.show();
 
-  if(!rewardGranted){
-   message.textContent="No reward was earned. No coins added.";
+  // Wait for the reward or dismissal event before cleaning up listeners.
+  const outcome=await Promise.race([
+   adFinished,
+   new Promise(resolve=>setTimeout(()=>resolve("timeout"),180000))
+  ]);
+
+  if(outcome==="dismissed" && !rewardGranted){
+   message.textContent="Ad closed before the reward was confirmed. No coins added.";
+  }else if(outcome==="failed"){
+   message.textContent="The advert could not be shown. Please try again.";
+  }else if(outcome==="timeout" && !rewardGranted){
+   message.textContent="The reward confirmation took too long. Please reopen the game and check your balance.";
   }
  }catch(error){
   console.warn("Rewarded ad unavailable:",error);
-  message.textContent="Ad unavailable or closed before reward. No coins added. Please try again.";
+  message.textContent="Ad unavailable. "+(error?.message||"Please try again later.");
  }finally{
-  if(rewardListener){
-   try{await rewardListener.remove();}catch(removeError){console.warn("Could not remove ad listener:",removeError);}
+  for(const listener of listeners){
+   try{await listener.remove();}catch(removeError){console.warn("Could not remove ad listener:",removeError);}
   }
   adBusy=false;
  }
