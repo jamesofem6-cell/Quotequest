@@ -49,6 +49,7 @@ button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:bold;
 </div>
 
 <button class="secondary" onclick="useHint()">Use hint (10 coins)</button>
+<button class="secondary" id="rescueButton" onclick="rescueQuestion()" style="display:none">Use 5 coins to try again</button>
 <button class="adButton" onclick="watchAdForCoins()">Watch Ad – Earn 20 Coins</button>
 <button class="primary" id="nextButton" onclick="nextQuestion()" disabled>Next challenge (answer correctly first)</button>
 
@@ -155,10 +156,13 @@ function chooseAnswer(choice,button){
   streak=0;
   button.style.background="#8b303d";
   document.getElementById("message").textContent="Not quite! Answer: "+item.a[item.c]+". Try again to unlock the next challenge.";
-  answered=false;
-  document.querySelectorAll(".answer").forEach(b=>{b.disabled=false;b.style.background="#344165";});
+  // One wrong guess locks the question. Only a 5-coin rescue unlocks another attempt.
+  answered=true;
+  document.querySelectorAll(".answer").forEach(b=>{b.disabled=true;});
+  const rescueButton=document.getElementById("rescueButton");
+  if(rescueButton){rescueButton.style.display="block";}
   const nextButton=document.getElementById("nextButton");
-  if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
+  if(nextButton){nextButton.disabled=true;nextButton.textContent="Locked — use 5 coins to retry";}
  }
  save();
 }
@@ -186,13 +190,19 @@ async function watchAdForCoins(){
   // Production ad unit: ca-app-pub-3760840152356990/7180750236
   ad=new RewardedAd({adUnitId:rewardedAdUnitId});
 
-  // Coins are granted only by Google's native rewarded-ad callback.
+  // Start the native Google Mobile Ads SDK before requesting a rewarded ad.
+  await AdMob.start();
+
+  // This listener is scoped to the one ad currently being shown. The plugin's
+  // event adId is a native numeric ID; some wrapper builds do not expose the
+  // same value as ad.id, so do not discard a valid reward due to that mismatch.
   rewardListener=await AdMob.addListener(AdMobPlusEvents.RewardedReward,event=>{
-   if(event.adId===ad.id && !rewardGranted && Number(event.reward?.amount)>0){
+   const amount=Number(event?.reward?.amount);
+   if(!rewardGranted && amount>0){
     rewardGranted=true;
     coins+=20;
     save();
-    message.textContent="Reward earned! +20 coins added.";
+    message.textContent="Reward earned! +20 coins added. Your balance is saved.";
    }
   });
 
@@ -212,6 +222,27 @@ async function watchAdForCoins(){
   }
   adBusy=false;
  }
+}
+
+function rescueQuestion(){
+ if(!answered || window.qq_lastAnswerCorrect===true || index<0)return;
+ if(coins<5){
+  document.getElementById("message").textContent="You need 5 coins to rescue this challenge. Watch a rewarded ad to earn 20 coins.";
+  return;
+ }
+ coins-=5;
+ answered=false;
+ window.qq_lastAnswerCorrect=false;
+ document.querySelectorAll(".answer").forEach(b=>{
+  b.disabled=false;
+  b.style.background="#344165";
+ });
+ const rescueButton=document.getElementById("rescueButton");
+ if(rescueButton){rescueButton.style.display="none";}
+ const nextButton=document.getElementById("nextButton");
+ if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
+ document.getElementById("message").textContent="5 coins spent. You have one more attempt — choose carefully!";
+ save();
 }
 
 function useHint(){
