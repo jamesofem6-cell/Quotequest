@@ -35,6 +35,11 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Configure Google test AdMob app ID
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's#<application#<application\\n        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713" />#' "$MANIFEST"
+
       - name: Sync Android
         run: npx cap sync android
 
