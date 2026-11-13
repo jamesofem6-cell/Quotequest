@@ -153,6 +153,7 @@ function chooseAnswer(choice,button){
   button.style.background="#8b303d";
   document.getElementById("message").textContent="Not quite! Answer: "+item.a[item.c]+". Try again to unlock the next challenge.";
   answered=false;
+  document.querySelectorAll(".answer").forEach(b=>{b.disabled=false;b.style.background="#344165";});
   const nextButton=document.getElementById("nextButton");
   if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
  }
