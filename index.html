@@ -24,6 +24,7 @@ button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:bold;
 .answer:active{transform:scale(.98)}
 .answer:disabled{opacity:.8}
 .primary{background:#ffd166;color:#171b30;width:100%;margin-top:15px}
+.adButton{background:#176b4b;color:#fff;width:100%;margin-top:10px}
 .secondary{background:#344165;color:#fff;width:100%;margin-top:10px}
 #message{min-height:25px;margin:15px 0;font-weight:bold}
 .small{font-size:12px;color:#aeb8d5;line-height:1.5;margin-top:22px}
@@ -48,6 +49,7 @@ button{border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:bold;
 </div>
 
 <button class="secondary" onclick="useHint()">Use hint (10 coins)</button>
+<button class="adButton" onclick="watchAdForCoins()">Watch Ad – Earn 20 Coins</button>
 <button class="primary" id="nextButton" onclick="nextQuestion()" disabled>Next challenge (answer correctly first)</button>
 
 <div class="small">
@@ -158,6 +160,42 @@ function chooseAnswer(choice,button){
   if(nextButton){nextButton.disabled=true;nextButton.textContent="Next challenge (answer correctly first)";}
  }
  save();
+}
+
+let adBusy=false;
+async function watchAdForCoins(){
+ if(adBusy)return;
+ adBusy=true;
+ const message=document.getElementById("message");
+ message.textContent="Loading rewarded advertisement...";
+ try{
+  const [{AdMob},{Capacitor}]=await Promise.all([
+   import("@capacitor-community/admob"),
+   import("@capacitor/core")
+  ]);
+  if(!Capacitor.isNativePlatform()){
+   message.textContent="Rewarded ads are available in the installed Android app.";
+   return;
+  }
+  await AdMob.initialize();
+  await AdMob.prepareRewardVideoAd({
+   adId:"ca-app-pub-3940256099942544/5224354917",
+   isTesting:true
+  });
+  const reward=await AdMob.showRewardVideoAd();
+  if(reward && Number(reward.amount)>0){
+   coins+=20;
+   save();
+   message.textContent="Reward earned! +20 coins added.";
+  }else{
+   message.textContent="No reward was earned. No coins added.";
+  }
+ }catch(error){
+  console.warn("Rewarded ad unavailable:",error);
+  message.textContent="Ad unavailable or closed before reward. No coins added. Please try again.";
+ }finally{
+  adBusy=false;
+ }
 }
 
 function useHint(){
