@@ -7,12 +7,12 @@
     "build": "vite build --outDir www"
   },
   "dependencies": {
-    "@capacitor/core": "^7.0.0",
-    "@capacitor/android": "^7.0.0",
-    "@capacitor-community/admob": "^7.0.3"
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/android": "^8.6.2",
+    "@capgo/capacitor-admob": "^8.2.9"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.0.0",
+    "@capacitor/cli": "^8.6.2",
     "vite": "^6.0.0"
   }
 }
