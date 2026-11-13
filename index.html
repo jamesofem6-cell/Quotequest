@@ -167,33 +167,50 @@ async function watchAdForCoins(){
  if(adBusy)return;
  adBusy=true;
  const message=document.getElementById("message");
+ let rewardListener=null;
+ let ad=null;
+ let rewardGranted=false;
  message.textContent="Loading rewarded advertisement...";
  try{
-  const [{AdMob},{Capacitor}]=await Promise.all([
-   import("@capacitor-community/admob"),
+  const [{RewardedAd,AdMob,AdMobPlusEvents},{Capacitor}]=await Promise.all([
+   import("@capgo/capacitor-admob"),
    import("@capacitor/core")
   ]);
   if(!Capacitor.isNativePlatform()){
    message.textContent="Rewarded ads are available in the installed Android app.";
    return;
   }
-  await AdMob.initialize();
-  await AdMob.prepareRewardVideoAd({
-   adId:"ca-app-pub-3940256099942544/5224354917",
-   isTesting:true
+
+  // Use Google's official test ad unit while validating the APK.
+  // Replace with the production unit below only after successful testing.
+  const rewardedAdUnitId="ca-app-pub-3940256099942544/5224354917";
+  // Production ad unit: ca-app-pub-3760840152356990/7180750236
+  ad=new RewardedAd({adUnitId:rewardedAdUnitId});
+
+  // Coins are granted only by Google's native rewarded-ad callback.
+  rewardListener=await AdMob.addListener(AdMobPlusEvents.RewardedReward,event=>{
+   if(event.adId===ad.id && !rewardGranted && Number(event.reward?.amount)>0){
+    rewardGranted=true;
+    coins+=20;
+    save();
+    message.textContent="Reward earned! +20 coins added.";
+   }
   });
-  const reward=await AdMob.showRewardVideoAd();
-  if(reward && Number(reward.amount)>0){
-   coins+=20;
-   save();
-   message.textContent="Reward earned! +20 coins added.";
-  }else{
+
+  await ad.load();
+  message.textContent="Ad ready. Please watch to earn 20 coins.";
+  await ad.show();
+
+  if(!rewardGranted){
    message.textContent="No reward was earned. No coins added.";
   }
  }catch(error){
   console.warn("Rewarded ad unavailable:",error);
   message.textContent="Ad unavailable or closed before reward. No coins added. Please try again.";
  }finally{
+  if(rewardListener){
+   try{await rewardListener.remove();}catch(removeError){console.warn("Could not remove ad listener:",removeError);}
+  }
   adBusy=false;
  }
 }
